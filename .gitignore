@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+# raw generations contain harmful model outputs and are derived from licensed data: never commit
+runs/
+*.zip
+# authors' data / SAEs / models
+guise/
+REINS/
+*.pt
+*.safetensors
+# small aggregate files ARE committed
+!results/*.csv
+!results/*.json
+!results/*.png

@@ -1,0 +1,79 @@
+---
+title: "Reproducing REINS on a free GPU: what holds up in an SAE safety-steering paper"
+description: "A from-scratch, zero-budget reproduction attempt of REINS (EMNLP 2026) on Qwen3.5-2B-Base, with offline checks of the paper's tables and pre-registered pass/fail criteria."
+date: 2026-11-15
+tags: ["ai-safety", "sparse-autoencoders", "steering", "reproduction"]
+draft: true
+---
+
+{/* DRAFT. Every number below is either (a) recomputed from the paper's printed tables by my own code, or (b) marked TODO until a real run exists. Nothing from my own GPU runs has been produced yet. */}
+
+## The claim
+
+REINS (Ding et al., EMNLP 2026) steers a language model through sparse-autoencoder features. For each prompt it suppresses the features that support the harmful continuation (Harm-Inhibit) and adds a fixed set of refusal features on the first few generated positions (Refusal-Enhance). A gate (REINS-Gate) decides per prompt whether to steer at all. The authors build GUISE, 900 harmful requests hidden inside plausible task wrappers, each with a matched safe prompt. Their headline for Qwen3.5-2B-Base: harmful response rate falls from 88.7% to 24.8% while explicit refusals rise from 1.7% to 43.9%.
+
+## My plan
+
+Re-implement the method myself, run it on Qwen3.5-2B-Base with free Kaggle GPUs, and judge outputs with an open model instead of GPT-4o-mini. I use the authors' released data, SAEs and frozen refusal and gate controllers as inputs, and write the attribution, the intervention hook, the metrics and the judge pipeline myself. Deviations (smaller model, different judge, my own prompt template, harm weights fixed to 1) are listed in the repository.
+
+## Step 1: do the paper's own numbers hold together?
+
+The authors release code, data and frozen controllers, but no model outputs. So the only offline reference is the paper's tables. I re-derived what can be derived.
+
+| Check | Paper says | I recompute |
+|---|---|---|
+| 4B: HRR reduction of REINS vs CorrSteer-A | 39.8% | 39.82% |
+| 4B: SRR ratio vs CorrSteer-A | about 2.7 times | 2.69 times |
+| 2B: HRR reduction vs CorrSteer-A | 49.7% | 49.70% |
+| 2B: SRR ratio vs CorrSteer-A | about 3.7 times | 3.66 times |
+| Row sums of Tables 2, 6, 7, 10 | 100 | all within rounding |
+
+All 42 arithmetic checks pass. Two things I found that the paper does not state:
+
+- Fourteen of the 28 safety rows are not multiples of 1/300, although the evaluation split has 300 prompts. Several of them are consistent with an average over three runs of 300 (900 outputs). This is my inference, not something the paper says.
+- The released data uses different field names than the paper's schema table (the harmful prompt is called a malicious prompt, the matched safe prompt is called a borderline prompt, and the crime family is called cybercrime). The released gate score is also a restricted cosine over the gate's own 256 coordinates, while the paper describes a cosine over the full feature vector. TODO: run both variants.
+
+## Step 2: what do the metrics reward?
+
+- A constant refusal string would score 0% harmful and 100% refusal. Only the over-refusal check on matched safe prompts separates it from real steering, and the paper reports that check only for Original, REINS and REINS-Gate.
+- Empty output also scores 0% harmful. The paper itself shows this for CorrSteer-A on AdvBench (0.0% harmful with 100% collapse).
+- GUISE was built by revising prompts until Qwen3.5-4B-Base fulfilled them (harmful rate 78.7% to 91.3%). Original harmful rates on that model are therefore selection-inflated, and cross-model comparisons are biased.
+- The gate picks one of five gates using the sample's true category label. That is an oracle at evaluation time.
+- Small-sample caveat: with 300 prompts, two runs must differ by about 7 points near 25% to be distinguishable. For the utility panels (70 MMLU-Pro and 30 GPQA questions) the minimum detectable difference is about 15 to 25 points, and every utility difference in the paper's tables sits inside that. The 2B base model scores 26.7% on GPQA against a 25% chance level, so utility preservation says little at 2B.
+
+## My runs
+
+Status: not run yet. The pre-registered criteria were written before any run (repository tag criteria-frozen, TODO).
+
+| ID | Comparison | Threshold | Result |
+|---|---|---|---|
+| C1 | HRR, REINS vs Original | drop of at least 40 points | TODO |
+| C2 | SRR, REINS vs Original and vs random control | at least +25 points over both | TODO |
+| C3 | CR of REINS | at most 15% | TODO |
+| C4 | HRR drop of equal-budget random control | at most 10 points | TODO |
+| C5 | HRR, Gate vs REINS | within 5 points | TODO |
+| C5b | gate open rate | at least 90% harmful, at most 15% matched-safe | TODO |
+| C6 | refusals on matched safe prompts | REINS at least +10 points, Gate removes at least 70% of the increase | TODO |
+| C7a | SRR, Harm-only vs REINS | at least 20 points lower | TODO |
+| C7b | HRR, Refusal-only vs REINS | at least 15 points higher | TODO |
+
+Control runs at the same sample size: Original, a random-coordinate control, a random-active-coordinate control, and the two single-component ablations. Two seeds: with greedy decoding they measure the random control draw and numerical noise, not data variance, so I report Wilson intervals as well.
+
+## An extension
+
+TODO after the main runs: compare my judge with a second open judge (agreement and effect on the ordering), and test the full-vector gate cosine.
+
+## My interpretation (AI-safety angle)
+
+TODO after results. Questions I want to answer: does suppressing prompt-specific harmful features generalize beyond the model the benchmark was built on, and is the gain still there once an equal-budget random control and over-refusal on matched safe prompts are counted? A method that needs a ground-truth category to decide when to turn on is a different thing from a deployed safeguard, and I will say so.
+
+## Limitations
+
+One small model, a weaker judge than the paper's, my own prompt template, frozen controllers taken from the authors, a hybrid linear-attention architecture I could not test locally, and a single benchmark that is adaptive to a different model.
+
+## Links
+
+- Paper: REINS, EMNLP 2026 main conference
+- Authors' code and GUISE: github.com/Geralt1020/REINS
+- SAE checkpoints: huggingface.co/Carlos4869/REINS-SAE
+- My repo: github.com/sarrazer24/reins-mini

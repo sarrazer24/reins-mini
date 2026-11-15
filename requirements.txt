@@ -1,0 +1,12 @@
+# local (PowerShell, CPU): tests and offline checks only
+numpy>=1.26
+pytest>=8
+matplotlib>=3.8
+torch>=2.3        # CPU build is enough for the mock tests: pip install torch --index-url https://download.pytorch.org/whl/cpu
+transformers>=4.57  # for tests with a tiny random Llama; on Kaggle use: pip install -U transformers
+tokenizers
+nbformat
+# Kaggle only (not needed locally)
+huggingface_hub
+accelerate
+# vllm   # optional judge server on Kaggle (UNTESTED on T4)

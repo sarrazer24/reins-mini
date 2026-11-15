@@ -1,0 +1,43 @@
+check,status,detail
+4B rowsum Original,PASS,sum=100.0
+4B grid Original,INFO,"smallest consistent n in (300,600,900): 300"
+4B rowsum Random-SAE,PASS,sum=100.0
+4B grid Random-SAE,INFO,"smallest consistent n in (300,600,900): 900"
+4B rowsum Refusal-SAE,PASS,sum=100.0
+4B grid Refusal-SAE,INFO,"smallest consistent n in (300,600,900): 300"
+4B rowsum SAE-SSV*,PASS,sum=100.0
+4B grid SAE-SSV*,INFO,"smallest consistent n in (300,600,900): 900"
+4B rowsum CorrSteer-A,PASS,sum=100.0
+4B grid CorrSteer-A,INFO,"smallest consistent n in (300,600,900): 300"
+4B rowsum REINS,PASS,sum=100.0
+4B grid REINS,INFO,"smallest consistent n in (300,600,900): 300"
+4B rowsum REINS-Gate,PASS,sum=100.0
+4B grid REINS-Gate,INFO,"smallest consistent n in (300,600,900): 300"
+4B Original MMLU-Pro on k/70 grid,PASS,50.0 ~ 35/70
+4B Original GPQA on k/30 grid,PASS,40.0 ~ 12/30
+2B rowsum Original,PASS,sum=100.1
+2B grid Original,INFO,"smallest consistent n in (300,600,900): 300"
+2B rowsum Random-SAE,PASS,sum=100.0
+2B grid Random-SAE,INFO,"smallest consistent n in (300,600,900): 300"
+2B rowsum Refusal-SAE,PASS,sum=100.0
+2B grid Refusal-SAE,INFO,"smallest consistent n in (300,600,900): 300"
+2B rowsum SAE-SSV*,PASS,sum=100.0
+2B grid SAE-SSV*,INFO,"smallest consistent n in (300,600,900): 900"
+2B rowsum CorrSteer-A,PASS,sum=100.0
+2B grid CorrSteer-A,INFO,"smallest consistent n in (300,600,900): 900"
+2B rowsum REINS,PASS,sum=100.1
+2B grid REINS,INFO,"smallest consistent n in (300,600,900): 900"
+2B rowsum REINS-Gate,PASS,sum=100.1
+2B grid REINS-Gate,INFO,"smallest consistent n in (300,600,900): 900"
+2B Original MMLU-Pro on k/70 grid,PASS,27.1 ~ 19/70
+2B Original GPQA on k/30 grid,PASS,26.7 ~ 8/30
+4B HRR reduction vs CorrSteer-A,PASS,recomputed 39.82% (paper 39.8)
+4B SRR ratio vs CorrSteer-A,PASS,recomputed 2.69x (paper 2.7)
+2B HRR reduction vs CorrSteer-A,PASS,recomputed 49.70% (paper 49.7)
+2B SRR ratio vs CorrSteer-A,PASS,recomputed 3.66x (paper 3.7)
+Table6 rowsum GPT-4o-mini,PASS,sum=100.00
+Table6 rowsum Claude Sonnet 4.6,PASS,sum=100.00
+Table6 rowsum DeepSeek-V4-Pro,PASS,sum=100.00
+Table10 rowsum Original,PASS,sum=100.00
+Table10 rowsum REINS,PASS,sum=100.00
+Table10 rowsum REINS-Gate,PASS,sum=100.00
