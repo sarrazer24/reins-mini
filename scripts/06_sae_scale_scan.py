@@ -12,6 +12,9 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--model", default="Qwen/Qwen3.5-2B-Base"); ap.add_argument("--sae-root", required=True)
 ap.add_argument("--guise-dir", required=True); ap.add_argument("--n-prompts", type=int, default=24)
 ap.add_argument("--out", default="results")
+ap.add_argument("--layers", default="0-23", help="e.g. 4-23")
+ap.add_argument("--lo", type=float, default=-4); ap.add_argument("--hi", type=float, default=4); ap.add_argument("--step", type=float, default=0.5, help="log2 grid step")
+ap.add_argument("--tag", default="")
 a = ap.parse_args()
 from transformers import AutoModelForCausalLM, AutoTokenizer
 tok = AutoTokenizer.from_pretrained(a.model)
@@ -24,11 +27,12 @@ with torch.no_grad():
     for s in ev: m(**tok(P.render(s.harmful), return_tensors="pt").to("cuda"))
 for h in hs: h.remove()
 del m; torch.cuda.empty_cache()
-scales = [2 ** (k / 2) for k in range(-8, 9)]   # 0.0625 ... 16
+lo_l, hi_l = [int(x) for x in a.layers.split("-")]
+scales = [2 ** (a.lo + i * a.step) for i in range(int(round((a.hi - a.lo) / a.step)) + 1)]
 rows, cand = [], {}
 print(f"{len(ev)} prompts, tokens/layer (excluding token 0): {sum(h.shape[0]-1 for h in H[0])}")
 print("layer | mean|x| tok>0 | |x| tok0 | RMS-hyp c | NMSE@c=1 L0@c=1 | best c  NMSE@best L0@best | NMSE@hyp L0@hyp")
-for l in range(24):
+for l in range(lo_l, hi_l + 1):
     x = torch.cat([h[1:] for h in H[l]]).cuda()
     n0 = float(torch.stack([h[0].norm() for h in H[l]]).mean()); mn = float(x.norm(dim=-1).mean())
     sae = SAE.load_sae(os.path.join(a.sae_root, f"layer_{l:02d}.pt"), 2048, 16384).to_("cuda", torch.float32)
@@ -37,10 +41,10 @@ for l in range(24):
     for c, nm, l0 in res: rows.append(dict(layer=l, scale=round(c, 4), nmse=round(nm, 2), l0=round(l0, 1)))
     by = {round(c, 4): (nm, l0) for c, nm, l0 in res}
     best = min(res, key=lambda r: r[1]); cand[str(l)] = round(best[0], 4)
-    print(f"{l:5d} | {mn:13.1f} | {n0:8.1f} | {hyp:9.2f} | {by[1.0][0]:7.1f}% {by[1.0][1]:6.1f} | {best[0]:6.2f} {best[1]:9.1f}% {best[2]:7.1f} | {by[round(hyp,4)][0]:6.1f}% {by[round(hyp,4)][1]:6.1f}")
+    print(f"{l:5d} | {mn:13.1f} | {n0:8.1f} | {hyp:9.2f} | {by[1.0][0]:7.1f}% {by[1.0][1]:6.1f} | {best[0]:6.2f} {best[1]:9.1f}% {best[2]:7.1f} | {by[round(hyp,4)][0]:6.1f}% {by[round(hyp,4)][1]:6.1f}" + ("   <-- AT GRID EDGE" if best[0] in (min(scales), max(scales)) else ""))
     del sae
 os.makedirs(a.out, exist_ok=True)
-with open(os.path.join(a.out, "sae_scale_scan.csv"), "w", newline="") as f:
+with open(os.path.join(a.out, f"sae_scale_scan{a.tag}.csv"), "w", newline="") as f:
     w = csv.DictWriter(f, fieldnames=["layer", "scale", "nmse", "l0"]); w.writeheader(); w.writerows(rows)
-json.dump(cand, open(os.path.join(a.out, "sae_scales_candidate.json"), "w"), indent=1)
-print("wrote results/sae_scale_scan.csv and results/sae_scales_candidate.json")
+json.dump(cand, open(os.path.join(a.out, f"sae_scales_candidate{a.tag}.json"), "w"), indent=1)
+print("wrote scan csv and candidate json")
