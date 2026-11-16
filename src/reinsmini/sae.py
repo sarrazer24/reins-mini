@@ -98,3 +98,30 @@ def load_sae(path: str, d_model: int | None = None, n_features: int | None = Non
     if torch.is_tensor(scale):
         scale = float(scale.reshape(-1)[0])
     return SparseAE(ew.float().contiguous(), eb.float(), dw.float().contiguous(), bd.float(), thr, scale)
+
+
+def apply_scales(saes: dict, scales_path: str | None):
+    """Set per-layer input_scale from a JSON {"14": 4.1, ...} (written by scripts/06_sae_scale_scan.py)."""
+    if not scales_path:
+        return saes
+    import json
+    sc = {int(k): float(v) for k, v in json.load(open(scales_path)).items()}
+    for l, m in saes.items():
+        m.input_scale = sc.get(l, m.input_scale)
+    return saes
+
+
+@torch.no_grad()
+def scale_scan(x: torch.Tensor, sae: "SparseAE", scales):
+    """x: (T, d) real residual activations (caller drops the first token of each prompt).
+    Returns [(c, NMSE %, mean L0)] for the SAE fed c * x (reconstruction compared in x space)."""
+    keep = sae.input_scale
+    denom = ((x - x.mean(0)) ** 2).sum()
+    out = []
+    for c in scales:
+        sae.input_scale = float(c)
+        z = sae.encode(x)
+        rec = sae.decode(z)
+        out.append((float(c), float(100 * ((x - rec) ** 2).sum() / denom), float((z > 0).sum(-1).float().mean())))
+    sae.input_scale = keep
+    return out

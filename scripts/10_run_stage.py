@@ -23,6 +23,7 @@ ap.add_argument("--methods", nargs="*", default=["reins"])
 ap.add_argument("--dtype", default="float16", choices=["float16", "float32", "bfloat16"])
 ap.add_argument("--bs", type=int, default=8)
 ap.add_argument("--mode", default="delta", choices=["delta", "recon"])
+ap.add_argument("--sae-scales", default=None, help="JSON {layer: input scale} from 06_sae_scale_scan.py")
 ap.add_argument("--max-new-tokens", type=int, default=0, help="DEVIATION if set (paper preset: 256)")
 a = ap.parse_args()
 
@@ -57,7 +58,7 @@ def load_saes(ls):
     out = {}
     for l in sorted(ls):
         out[l] = SAE.load_sae(os.path.join(a.sae_root, f"layer_{l:02d}.pt"), hp["hidden"], hp["sae_width"]).to_(dev, torch.float32)
-    return out
+    return SAE.apply_scales(out, a.sae_scales)
 
 t0 = time.time()
 if a.stage == "original":

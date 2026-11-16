@@ -8,6 +8,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--size", default="2B"); ap.add_argument("--model", default="Qwen/Qwen3.5-2B-Base")
 ap.add_argument("--sae-root", required=True); ap.add_argument("--controllers", required=True)
 ap.add_argument("--guise-dir", required=True); ap.add_argument("--out", required=True)
+ap.add_argument("--sae-scales", default=None)
 ap.add_argument("--split-seed", type=int, default=12); ap.add_argument("--n-per-category", type=int, default=0)
 a = ap.parse_args()
 hp = T.HP[a.size]
@@ -25,6 +26,7 @@ tok = AutoTokenizer.from_pretrained(a.model)
 model = AutoModelForCausalLM.from_pretrained(a.model, torch_dtype=torch.float16).to(dev).eval()
 _, layers = S.find_layer_list(model, hp["layers"])
 saes = {l: SAE.load_sae(os.path.join(a.sae_root, f"layer_{l:02d}.pt"), hp["hidden"], hp["sae_width"]).to_(dev, torch.float32) for l in layers_needed}
+SAE.apply_scales(saes, a.sae_scales)
 rows = []
 with torch.no_grad():
     for s in ev:
