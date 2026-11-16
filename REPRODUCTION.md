@@ -129,3 +129,10 @@ Commit only `results/*.csv|json|png` and judged-verdict files (no responses). De
 3. Harm target construction (stopword-filtered prefix words re-tokenized as a sequence) and summing attribution over all positions.
 4. Layer list path for Qwen3.5 (found automatically).
 5. `AutoModelForCausalLM` may need `AutoModelForMultimodalLM` for Qwen3.5 (model cards mention it).
+
+## 11. Pilot findings (Kaggle run of 2026-11-15, 20 prompts, seed 0)
+
+- Stage 0 (measured): SAE files are `layer_00.pt` to `layer_23.pt` (269 MB each), keys `b_dec, k, threshold, decoder.weight (2048,16384), encoder.weight (16384,2048), encoder.bias`; my loader reads them; no input-scale key. transformers 5.23.0 loads Qwen3.5-2B-Base with `AutoModelForCausalLM`; decoder list is `model.layers` (24 blocks). The linear-attention fast kernels (`flash-linear-attention`, `causal-conv1d`) were NOT installed.
+- Speed (measured, fp16, batch 8, 256 new tokens): about 114 s per prompt for original generation (849 s per batch), steered methods the same (hook cost is negligible), attribution 8 s per prompt in fp32. At this speed one 300-prompt method costs about 9.5 h, which is not feasible. Cause not yet confirmed (my guess: the slow reference kernels); notebook 05 measures it.
+- Gate (measured, n=20 per kind): open rate 95% on harmful, 0% on matched-safe (paper 2B: 98.7 / 4.7). Too few prompts to compare.
+- Pilot outputs: no empty responses; REINS and refusal-only outputs are about half as long as original (mean 552 / 532 vs 1036 characters). Verdicts pending: the first judge run was on CPU and timed out.

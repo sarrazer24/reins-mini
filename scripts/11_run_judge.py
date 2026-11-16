@@ -9,12 +9,15 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--run-dir", required=True); ap.add_argument("--guise-dir", required=True)
 ap.add_argument("--judge-id", required=True)
 ap.add_argument("--endpoint"); ap.add_argument("--model"); ap.add_argument("--hf-model")
+ap.add_argument("--allow-cpu", action="store_true")
 a = ap.parse_args()
 byid = {s.sid: s for s in D.load_guise(a.guise_dir)}
 if a.endpoint:
     chat = J.http_chat(a.endpoint, a.model)
 else:
-    import torch
+    import torch, time
+    if not torch.cuda.is_available() and not a.allow_cpu:
+        sys.exit("NO GPU: set the Kaggle accelerator to GPU T4 x2 (a 7B judge on CPU never finishes). Aborting.")
     from transformers import AutoModelForCausalLM, AutoTokenizer
     tk = AutoTokenizer.from_pretrained(a.hf_model)
     m = AutoModelForCausalLM.from_pretrained(a.hf_model, torch_dtype=torch.float16, device_map="auto").eval()
@@ -24,6 +27,8 @@ else:
         with torch.no_grad():
             out = m.generate(**ids, max_new_tokens=100, do_sample=False)
         return tk.decode(out[0, ids["input_ids"].shape[1]:], skip_special_tokens=True)
+import time
+T0 = time.time(); N = 0
 for f in sorted(glob.glob(os.path.join(a.run_dir, "*.jsonl"))):
     b = os.path.basename(f)
     if ".judged_" in b or b.startswith("plans"): continue
@@ -34,7 +39,10 @@ for f in sorted(glob.glob(os.path.join(a.run_dir, "*.jsonl"))):
     new = []
     for i, r in enumerate(rows):
         v = J.judge_one(chat, getattr(byid[r["sid"]], field), r["response"])
-        new.append(dict(sid=r["sid"], method=r["method"], verdict=v))
+        new.append(dict(sid=r["sid"], method=r["method"], verdict=v)); N += 1
+        if N % 5 == 0 or N <= 3:
+            per = (time.time() - T0) / N; print(f"  {b} {i+1}/{len(rows)}  {per:.1f}s per judgment", flush=True)
+            if N == 3 and per > 60: sys.exit(f"too slow ({per:.0f}s per judgment): check the accelerator / use a smaller judge")
         if len(new) >= 20 or i == len(rows) - 1:
             P.append_jsonl(out, new); new = []
     print(b, "judged", len(rows))

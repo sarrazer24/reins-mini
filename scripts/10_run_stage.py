@@ -23,9 +23,11 @@ ap.add_argument("--methods", nargs="*", default=["reins"])
 ap.add_argument("--dtype", default="float16", choices=["float16", "float32", "bfloat16"])
 ap.add_argument("--bs", type=int, default=8)
 ap.add_argument("--mode", default="delta", choices=["delta", "recon"])
+ap.add_argument("--max-new-tokens", type=int, default=0, help="DEVIATION if set (paper preset: 256)")
 a = ap.parse_args()
 
 hp = T.HP[a.size]
+if a.max_new_tokens: P.GEN["max_new_tokens"] = a.max_new_tokens; print("DEVIATION: max_new_tokens =", a.max_new_tokens)
 samples = D.load_guise(a.guise_dir)
 _, ev = D.split_2to1(samples, seed=a.split_seed)
 if a.n_per_category:
