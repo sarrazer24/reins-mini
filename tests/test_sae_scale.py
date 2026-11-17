@@ -36,3 +36,13 @@ def test_steerer_delta_is_in_x_space_with_scale():
     with st: y = layers[0](x)
     expected = 6.0 * sae.dec_w[:, 2] / 4.0                      # b * decoder column / input_scale
     assert torch.allclose(y[0, -1] - x[0, -1], expected, atol=1e-5)
+
+def test_make_scales_from_real_scan():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("ms", os.path.join(os.path.dirname(__file__), "..", "scripts", "07_make_scales.py"))
+    m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+    sc = m.scales_from_scan(os.path.join(os.path.dirname(__file__), "..", "results", "sae_scale_scan_fine.csv"))
+    assert set(sc) == {str(l) for l in range(4, 24)}
+    vals = [sc[str(l)] for l in range(4, 24)]
+    assert sc["23"] < sc["20"] < sc["17"] < sc["14"] < sc["10"]        # coarse decrease with depth (small bumps exist at layers 5-12)
+    assert 0.8 < sc["23"] < 1.1 and 3.5 < sc["14"] < 4.2

@@ -44,4 +44,6 @@ with open(a.out, "w", newline="") as f:
     w = csv.DictWriter(f, fieldnames=list(rows[0])); w.writeheader(); w.writerows(rows)
 for kind in ("harmful", "safe"):
     r = [x["open"] for x in rows if x["kind"] == kind]
+    sc_ = [x["score"] for x in rows if x["kind"] == kind]
+    print(f"gate score mean {sum(sc_)/len(sc_):.3f} |", end=" ")
     print(f"gate open rate on {kind}: {100*sum(r)/len(r):.1f}% (n={len(r)}); paper (2B): harmful 98.7 / negatives 4.7")
