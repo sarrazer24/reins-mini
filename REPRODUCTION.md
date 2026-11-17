@@ -137,6 +137,19 @@ Commit only `results/*.csv|json|png` and judged-verdict files (no responses). De
 - Gate (measured, n=20 per kind): open rate 95% on harmful, 0% on matched-safe (paper 2B: 98.7 / 4.7). Too few prompts to compare.
 - Pilot outputs: no empty responses; REINS and refusal-only outputs are about half as long as original (mean 552 / 532 vs 1036 characters). Verdicts pending: the first judge run was on CPU and timed out.
 
-## 12. SAE input scale (measured 2026-11-16)
+## 12. SAE input scale: decision = scale 1 (raw activations), as in the authors' code (measured 2026-11-16)
 
-Fine scan (layers 4-23, 24 prompts, first token dropped): fed raw activations (scale 1) the SAEs reconstruct badly at layers 4-21 (NMSE 26% to over 5000%) and are too sparse or too dense. Scale at which mean L0 reaches the BatchTopK target 128: 6.6 at layer 4, 3.8 at layer 14, 1.45 at layer 20, 0.93 at layer 23 (smooth, decreasing with depth). Multiplied by the mean activation norm measured earlier (layers 14, 20, 23: 11.0, 27.3, 41.8) this gives 42, 40, 39: roughly constant and close to sqrt(2048) = 45, consistent with a per-layer RMS normalization of the inputs (my interpretation; the checkpoint has no scale key and the authors' code applies none, so either the bundle assumes it or their pipeline differs). NMSE at that scale is 19-25% (paper: about 9.5% on its own training-like data); NMSE alone cannot pick the scale (it keeps falling as the scale grows), which is why `07_make_scales.py` uses the L0 rule. The pilot of 2026-11-15 ran with scale 1 everywhere and is therefore not interpretable. Next: notebook 07 checks which scale makes the released gates behave like the paper (98.7% / 4.7%).
+Two measurements point in different directions, and the second one decides:
+
+1. Reconstruction scan (24 GUISE prompts, first token dropped): at scale 1 the SAEs reconstruct poorly at layers 4-21 and L0 is far from 128; the scale that gives L0 = 128 decreases smoothly with depth (6.6 at layer 4, 3.8 at layer 14, 1.45 at layer 20, 0.93 at layer 23) and times the mean activation norm is roughly constant (about 40, near sqrt(2048)). That looked like a per-layer RMS normalization (paper Table 5).
+2. Behavioural check on the released frozen gates (all 300 eval prompts per kind, my gate code):
+
+| input scale | gate open, harmful | gate open, matched-safe |
+|---|---|---|
+| 1 (raw, authors' code) | 99.3% | 3.7% |
+| NMSE-minimising | 100.0% | 97.0% |
+| L0 = 128 rule x0.8 / x1.0 / x1.25 | 100.0% | 25.3% / 68.7% / 90.3% |
+| paper (2B, App. D.3) | 98.7% | 4.7% (negatives, incl. general prompts) |
+
+Only scale 1 reproduces the paper's gate behaviour, so the released controllers were calibrated on raw activations. **Decision: no `--sae-scales` (scale 1) everywhere.** This corrects my earlier statement that the 2026-11-15 pilot was probably invalid: that pilot used scale 1, which is the authors' regime; it is only superseded because it ran without the fast kernels.
+Caveats: (a) I chose among five variants by closeness to the paper's gate numbers on the eval split, a mild forking path, so the gate rates are a diagnostic, not independent evidence for C5b; (b) at scale 1 the SAEs reconstruct the residual stream poorly at layers 14-19 (NMSE 108% at layer 14 down to 18% at layer 23, L0 25-146), far from the paper's reported mean NMSE of about 9.5%, so either Table 5's "Global RMS" refers to something not in the release or the paper's quality check used another input; the intervention is applied as a delta so reconstruction error is not injected; (c) the rescaling code (`--sae-scales`, `07_make_scales.py`) stays as an optional ablation.
