@@ -10,6 +10,7 @@ ap.add_argument("--run-dir", required=True); ap.add_argument("--guise-dir", requ
 ap.add_argument("--judge-id", required=True)
 ap.add_argument("--endpoint"); ap.add_argument("--model"); ap.add_argument("--hf-model")
 ap.add_argument("--allow-cpu", action="store_true")
+ap.add_argument("--json-prefill", action="store_true", help="force the reply to start with {\"label\": (HF backend)")
 ap.add_argument("--limit", type=int, default=0, help="judge only the first N rows per file (smoke test)")
 ap.add_argument("--only", default="", help="substring filter on file names")
 a = ap.parse_args()
@@ -23,14 +24,16 @@ else:
     from transformers import AutoModelForCausalLM, AutoTokenizer
     tk = AutoTokenizer.from_pretrained(a.hf_model)
     m = AutoModelForCausalLM.from_pretrained(a.hf_model, torch_dtype=torch.float16, device_map="auto").eval()
+    PREFILL = '{"label": ' if a.json_prefill else ""
     def chat(system, user):
-        ids = tk.apply_chat_template([dict(role="system", content=system), dict(role="user", content=user)],
-                                     add_generation_prompt=True, return_tensors="pt", return_dict=True).to(m.device)
+        text = tk.apply_chat_template([dict(role="system", content=system), dict(role="user", content=user)],
+                                      add_generation_prompt=True, tokenize=False) + PREFILL
+        ids = tk(text, return_tensors="pt", add_special_tokens=False).to(m.device)
         with torch.no_grad():
             out = m.generate(**ids, max_new_tokens=100, do_sample=False)
-        return tk.decode(out[0, ids["input_ids"].shape[1]:], skip_special_tokens=True)
+        return PREFILL + tk.decode(out[0, ids["input_ids"].shape[1]:], skip_special_tokens=True)
 import time
-T0 = time.time(); N = 0
+T0 = time.time(); N = 0; DIAG = []
 for f in sorted(glob.glob(os.path.join(a.run_dir, "*.jsonl"))):
     b = os.path.basename(f)
     if ".judged_" in b or b.startswith("plans") or (a.only and a.only not in b): continue
@@ -41,11 +44,13 @@ for f in sorted(glob.glob(os.path.join(a.run_dir, "*.jsonl"))):
     if a.limit: rows = rows[: a.limit]
     new = []
     for i, r in enumerate(rows):
-        v = J.judge_one(chat, getattr(byid[r["sid"]], field), r["response"])
+        v = J.judge_one(chat, getattr(byid[r["sid"]], field), r["response"], diag=DIAG)
         new.append(dict(sid=r["sid"], method=r["method"], verdict=v)); N += 1
         if N % 5 == 0 or N <= 3:
             per = (time.time() - T0) / N; print(f"  {b} {i+1}/{len(rows)}  {per:.1f}s per judgment", flush=True)
             if N == 3 and per > 60: sys.exit(f"too slow ({per:.0f}s per judgment): check the accelerator / use a smaller judge")
         if len(new) >= 20 or i == len(rows) - 1:
             P.append_jsonl(out, new); new = []
-    print(b, "judged", len(rows))
+    print(b, "judged", len(rows), "| failed replies:", len(DIAG))
+    for d_ in DIAG[:3]: print("   unparseable reply (len %d, first 100 chars): %r" % (len(d_), d_[:100]))
+    DIAG.clear()

@@ -18,3 +18,7 @@ def test_retry_and_drop():
     assert J.judge_one(lambda s, u: "garbage", "p", "r") is None
     assert J.judge_one(lambda s, u: 1/0, "p", "r", retries=0) is None
     assert J.judge_one(lambda s, u: "x", "p", "  ")["empty_or_degenerate"] is True
+
+def test_diag_collects_failed_replies():
+    d = []
+    assert J.judge_one(lambda s, u: "oops no json", "p", "r", retries=1, diag=d) is None and d == ["oops no json", "oops no json"]

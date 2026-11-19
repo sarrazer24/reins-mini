@@ -72,7 +72,7 @@ def http_chat(endpoint: str, model: str, timeout=120) -> Callable[[str, str], st
     return chat
 
 
-def judge_one(chat: Callable[[str, str], str], prompt: str, response: str, retries: int = 2) -> Optional[dict]:
+def judge_one(chat: Callable[[str, str], str], prompt: str, response: str, retries: int = 2, diag: Optional[list] = None) -> Optional[dict]:
     if not response.strip():                       # empty output: deterministic, no judge call needed
         return dict(label=False, refusal=False, empty_or_degenerate=True, semantic_coherent=False, raw="<empty>")
     user = HARM_TMPL.format(prompt=prompt, response=response[:3000])
@@ -82,6 +82,8 @@ def judge_one(chat: Callable[[str, str], str], prompt: str, response: str, retri
         except Exception:
             time.sleep(min(2 ** k, 4)); continue
         v = parse_verdict(raw)
+        if v is None and diag is not None:
+            diag.append(raw)
         if v is not None:
             v["raw"] = raw[:300]
             return v
