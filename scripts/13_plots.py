@@ -1,8 +1,8 @@
-"""Stacked outcome bars per method from results/summary.csv (mean over seeds, error bar = seed range on HRR)."""
+"""Stacked outcome bars per method from results/summary_main.csv (mean over seeds, error bar = seed range on HRR)."""
 import csv, os, collections
 import matplotlib; matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-rows = list(csv.DictReader(open("results/summary.csv")))
+rows = list(csv.DictReader(open("results/summary_main.csv")))
 by = collections.defaultdict(list)
 for r in rows: by[r["method"]].append(r)
 order = [m for m in ("original", "random_any", "random_active", "harm_only", "refusal_only", "reins", "reins_gate") if m in by]

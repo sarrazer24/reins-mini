@@ -10,6 +10,8 @@ ap.add_argument("--run-dir", required=True); ap.add_argument("--guise-dir", requ
 ap.add_argument("--judge-id", required=True)
 ap.add_argument("--endpoint"); ap.add_argument("--model"); ap.add_argument("--hf-model")
 ap.add_argument("--allow-cpu", action="store_true")
+ap.add_argument("--limit", type=int, default=0, help="judge only the first N rows per file (smoke test)")
+ap.add_argument("--only", default="", help="substring filter on file names")
 a = ap.parse_args()
 byid = {s.sid: s for s in D.load_guise(a.guise_dir)}
 if a.endpoint:
@@ -31,11 +33,12 @@ import time
 T0 = time.time(); N = 0
 for f in sorted(glob.glob(os.path.join(a.run_dir, "*.jsonl"))):
     b = os.path.basename(f)
-    if ".judged_" in b or b.startswith("plans"): continue
+    if ".judged_" in b or b.startswith("plans") or (a.only and a.only not in b): continue
     out = f.replace(".jsonl", f".judged_{a.judge_id}.jsonl")
     done = P.done_ids(out)
     field = "safe" if b.endswith("_safe.jsonl") else "harmful"
     rows = [r for r in P.read_jsonl(f) if r["sid"] not in done]
+    if a.limit: rows = rows[: a.limit]
     new = []
     for i, r in enumerate(rows):
         v = J.judge_one(chat, getattr(byid[r["sid"]], field), r["response"])

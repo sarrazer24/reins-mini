@@ -159,3 +159,29 @@ Caveats: (a) I chose among five variants by closeness to the paper's gate number
 Go/no-go: judge drop 0/160; empty outputs 0/160; steered outputs differ from original (mean length original 1026 chars, REINS 520, refusal-only 531, harm-only 943, random controls about 1030); gate open 95% harmful / 0% safe (n=20). Timings with fast kernels: original 123 s for 20 prompts (first call, includes kernel compile; 28 s for the safe set later), attribution 290 s first call then 10 s, five steered methods 232 s, judge 2.4 s per judgment. Extrapolation (not measured at 300): about 1.5-2 h generation and about 1.6 h judging per seed.
 Outcomes (judge Qwen2.5-7B-Instruct, n=20, 95% Wilson CIs about +-20 pp): Original HRR 70 / SRR 0 / OSR 30; random_any 65; harm_only 65; refusal_only HRR 15 / SRR 50; REINS HRR 15 / SRR 70 / OSR 15 / CR 0; Gate 15 / 65. Over-refusal on matched-safe: original 0%, REINS 15%, gate 0%. Qualitatively in the paper's direction (large HRR drop, refusals up, no collapse, gate removes over-refusal). **C7b failed at n=20** (refusal-only HRR 15 equals REINS 15, whereas the paper's Fig. 4a shows refusal-only leaving HRR high); CIs are too wide to conclude, and the threshold stays as pre-registered. Original HRR 70% is below the paper's 88.7% (CI 48-86): not distinguishable at n=20; the judge differs from the paper's.
 Criteria are frozen as written in section 6 / scripts/12_evaluate.py (tag `criteria-frozen` before the main run). The 20 pilot prompts are part of the 300 main prompts.
+
+## 14. Main run results (2026-11-19; 300 eval prompts, seeds 0 and 1, scale 1, judge Qwen2.5-7B-Instruct, 0 of 4800 judgments dropped)
+
+Files: `results/summary_main.csv`, `results/criteria.json`, `results/outcomes.png`.
+Verdict under the frozen rule: **reproduced** (C1 to C4 PASS in both seeds). C5, C5b, C6, C7a PASS. **C7b FAIL** (refusal-only HRR 22.7 vs REINS 17.0 / 17.7; required gap 15 pp, observed about 5-6 pp; the Wilson intervals overlap, so "the gap is zero" is not excluded either).
+Headline (seed 0 / seed 1): Original HRR 66.7 / 67.0; REINS HRR 17.0 / 17.7, SRR 54.3 / 55.7, CR 2.3 / 2.7; Gate 17.3 / 18.0. Relative HRR drop 74.5% / 73.6% vs 72.0% in the paper's Table 7. Over-refusal on matched-safe prompts: Original 0.0, REINS 13.3 / 13.7, Gate 1.0 (removes 92% / 93%).
+Not matching the paper: absolute levels (Original HRR 66.7 vs 88.7; Original OSR 31.3 vs 9.7; REINS CR 2.5 vs 12.8). Possible causes, none tested: judge, prompt template, model-version effects.
+Open items: paired per-prompt test for C7b; second judge; utility (D10) not run; SAE reconstruction discrepancy (section 12).
+Data hygiene: `gen_main_seed*.zip` contain harmful model outputs. Keep Kaggle notebooks/datasets private or delete the outputs; never commit them.
+
+## 15. Paired per-prompt analysis (script 15, verdict files only; results/paired_main.csv)
+
+Same 300 prompts, exact McNemar and paired bootstrap 95% CI. The two seeds are NOT independent replications: with greedy decoding they re-run almost the same experiment on the same prompts.
+- REINS vs Original: HRR -49.7 / -49.3 pp (CIs about -56 to -43), SRR +52.3 / +54.0 pp. Large and unambiguous.
+- REINS vs Refusal-only: HRR -5.7 pp [-10.3, -0.7], p=0.036 (seed 0) and -5.0 pp [-10.3, 0.0], p=0.082 (seed 1): borderline; SRR +9.0 / +10.3 pp, p=0.0045 / 0.0013. C7b (needs 15 pp on HRR) stays FAIL; Harm-Inhibit adds a real but small amount on top of refusal-only, mostly in SRR.
+- Harm-only vs Original: HRR -3.3 pp [-8.3, +2.0] (p=0.26) and -5.3 pp (p=0.068); vs random-active: -4.3 / -2.7 pp, p=0.15 / 0.41. Not distinguishable from zero.
+- Random coordinates vs Original: +1.3 / 0.0 pp. Gate vs REINS: differ in one prompt per seed.
+- Per family (HRR, Original / Refusal-only / REINS, seed 0): hate 86.7 / 33.3 / 23.3, cybercrime 63.3 / 23.3 / 20.0, autolesion 63.3 / 31.7 / 23.3, pornography 55.0 / 13.3 / 11.7, violence 65.0 / 11.7 / 6.7. In seed 1 cybercrime REINS (30.0) is worse than refusal-only (23.3): the combination does not help in every family.
+
+## 16. Second judge: pre-registered robustness criteria (written BEFORE the run, 2026-11-20)
+
+Judge B: NousResearch/Hermes-3-Llama-3.1-8B (different family from judge A, Qwen2.5-7B-Instruct), same rubric, same outputs, untested until run. Criteria, frozen now:
+- **J1** under judge B, C1 to C4 all PASS in both seeds (scripts/12_evaluate.py --judge-id hermes3-8b).
+- **J2** pooled Cohen kappa between A and B on the harmful / not-harmful label is at least 0.40 (scripts/16_judge_agreement.py).
+- **J3** HRR(Original) is above HRR(Refusal-only), which is above HRR(REINS), under BOTH judges in every seed.
+Not criteria, reported as they come: C5 to C7 under judge B, and whether the C7b failure and the Harm-Inhibit-alone result survive. Smoke gate before the full run: at most 2 dropped judgments out of 20; otherwise switch to the fallback judge (Phi-3.5-mini) and say so. Verdict files of judge A are committed in results/judged/main (they contain no responses).
