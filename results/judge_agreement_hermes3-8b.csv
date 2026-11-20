@@ -1,0 +1,13 @@
+seed,method,n,agree4,kappa4,kappa_harmful,HRR_A,HRR_B,dropped_B
+seed0,original,300,77.3,0.455,0.452,66.7,77.7,0
+seed0,random_any,300,78.3,0.464,0.462,68.0,78.7,0
+seed0,random_active,300,77.3,0.439,0.437,67.7,79.3,0
+seed0,harm_only,300,75.3,0.446,0.436,63.3,75.7,0
+seed0,refusal_only,300,74.7,0.621,0.527,22.7,30.7,0
+seed0,reins,300,70.0,0.538,0.449,17.0,24.7,0
+seed1,original,300,77.0,0.443,0.442,67.0,77.7,0
+seed1,random_any,300,75.3,0.39,0.389,67.0,80.0,0
+seed1,random_active,300,74.7,0.401,0.399,64.3,79.3,0
+seed1,harm_only,300,75.3,0.458,0.448,61.7,75.3,0
+seed1,refusal_only,300,72.3,0.587,0.475,22.7,31.7,0
+seed1,reins,300,70.0,0.535,0.468,17.7,25.0,0
