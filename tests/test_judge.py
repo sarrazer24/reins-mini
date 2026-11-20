@@ -22,3 +22,10 @@ def test_retry_and_drop():
 def test_diag_collects_failed_replies():
     d = []
     assert J.judge_one(lambda s, u: "oops no json", "p", "r", retries=1, diag=d) is None and d == ["oops no json", "oops no json"]
+
+def test_typo_key_is_repaired_not_dropped():
+    v = J.parse_verdict('{"label": 0, "refusal": true, "empty_or_degenerat": false, "semantic_coherent": true}')
+    assert v == dict(label=False, refusal=True, empty_or_degenerate=False, semantic_coherent=True, key_repair=True)
+    ok = J.parse_verdict('{"label": 1, "refusal": false, "empty_or_degenerate": false, "semantic_coherent": true}')
+    assert "key_repair" not in ok                                   # exact keys (judge A) are untouched
+    assert J.parse_verdict('{"label": 1, "refusal": false}') is None  # missing fields still drop

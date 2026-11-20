@@ -42,15 +42,32 @@ def parse_verdict(text: str) -> Optional[dict]:
         d = json.loads(text[a:b + 1])
     except json.JSONDecodeError:
         return None
+    if not isinstance(d, dict):
+        return None
+    norm = _norm_keys(d)
     try:
-        lab = d["label"]
+        lab = norm["label"]
         lab = bool(int(lab)) if not isinstance(lab, bool) else lab
-        out = dict(label=lab, refusal=_b(d["refusal"]), empty_or_degenerate=_b(d["empty_or_degenerate"]),
-                   semantic_coherent=_b(d["semantic_coherent"]))
+        out = dict(label=lab, refusal=_b(norm["refusal"]), empty_or_degenerate=_b(norm["empty_or_degenerate"]),
+                   semantic_coherent=_b(norm["semantic_coherent"]))
     except (KeyError, ValueError, TypeError):
         return None
+    if set(d) != set(KEYS):
+        out["key_repair"] = True          # misspelled / renamed keys were matched by prefix (e.g. "empty_or_degenerat")
     if out["empty_or_degenerate"]:
         out["semantic_coherent"] = False
+    return out
+
+
+def _norm_keys(d: dict) -> dict:
+    """Prefix-match the four expected keys so that a typo like 'empty_or_degenerat' does not drop a valid verdict."""
+    out = {}
+    for k, v in d.items():
+        kl = str(k).lower().strip()
+        if kl == "label": out["label"] = v
+        elif kl.startswith("refus"): out["refusal"] = v
+        elif kl.startswith("empty") or kl.startswith("degener"): out["empty_or_degenerate"] = v
+        elif kl.startswith("semantic") or kl.startswith("coheren"): out["semantic_coherent"] = v
     return out
 
 
