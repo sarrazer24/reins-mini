@@ -2,7 +2,7 @@
 
 A small-scale, from-scratch re-implementation of **REINS** (Refusal-Enhanced Inhibitory Steering with SAE features, Ding et al., EMNLP 2026) on Qwen3.5-2B-Base, built to run on free Kaggle GPUs. This is my own implementation, not the authors' code; deviations are listed in `REPRODUCTION.md` section 0.
 
-**Status: main run done (2 seeds, 300 prompts, open judge). Core claim reproduced under my pre-registered criteria (C1-C4), also under a second judge (J1-J3); the refusal-only ablation claim (C7b) did not reproduce. See `REPRODUCTION.md` sections 12-14, `results/`, and `blog-post-draft.mdx`.**
+**Status: main run done (2 seeds, 300 prompts, open judge). Core claim reproduced under my pre-registered criteria (C1-C4), also under a second judge (J1-J3); the refusal-only ablation claim (C7b) did not reproduce. See `REPRODUCTION.md` sections 12-14, `results/`.**
 
 ## Layout
 ```
